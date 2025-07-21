@@ -10,7 +10,7 @@ class ResendEmailService {
       // Use different "from" addresses based on environment
       const isProduction = process.env.NODE_ENV === 'production';
       const fromAddress = isProduction 
-        ? 'Metrax Website <noreply@metraxindigenous.com>' 
+        ? 'Metrax Website <noreply@mail.metraxindigenous.com>' 
         : 'onboarding@resend.dev'; // Resend's test domain
 
       // IMPORTANT: In test mode, Resend only allows sending to your verified email
@@ -113,7 +113,7 @@ ${!isProduction ? '\nNote: In production, this would be sent to info@metraxindig
       const { donorName, donorEmail, amount, projectTitle, message, submittedAt } = donationData;
       const isProduction = process.env.NODE_ENV === 'production';
       const fromAddress = isProduction 
-        ? 'Metrax Website <noreply@metraxindigenous.com>' 
+        ? 'Metrax Website <noreply@mail.metraxindigenous.com>' 
         : 'onboarding@resend.dev';
       const toAddress = isProduction
         ? ['info@metraxindigenous.com']
@@ -148,7 +148,7 @@ ${!isProduction ? '\nNote: In production, this would be sent to info@metraxindig
       const { communityName, province, address, coordinatorName, phone, email, membersToEnroll, programYears, homesPerYear, totalHomes, landsIdentified, siteSurveyCompleted, soilStudyCompleted, architecturalDesignSelected, constructionFundsAvailable, educationFundsAvailable, comments, submittedAt } = expressionData;
       const isProduction = process.env.NODE_ENV === 'production';
       const fromAddress = isProduction 
-        ? 'Metrax Website <noreply@metraxindigenous.com>' 
+        ? 'Metrax Website <noreply@mail.metraxindigenous.com>' 
         : 'onboarding@resend.dev';
       const toAddress = isProduction
         ? ['info@metraxindigenous.com']
@@ -195,7 +195,7 @@ ${!isProduction ? '\nNote: In production, this would be sent to info@metraxindig
       const { firstName, lastName, email, phone, address, city, province, postalCode, availability, volunteerRoles, experience, skills, motivation, emergencyContact, emergencyPhone, submittedAt } = volunteerData;
       const isProduction = process.env.NODE_ENV === 'production';
       const fromAddress = isProduction 
-        ? 'Metrax Website <noreply@metraxindigenous.com>' 
+        ? 'Metrax Website <noreply@mail.metraxindigenous.com>' 
         : 'onboarding@resend.dev';
       const toAddress = isProduction
         ? ['info@metraxindigenous.com']
@@ -235,7 +235,7 @@ ${!isProduction ? '\nNote: In production, this would be sent to info@metraxindig
       const { courseId, firstName, lastName, email, phone, address, city, province, postalCode, motivation, submittedAt } = enrollmentData;
       const isProduction = process.env.NODE_ENV === 'production';
       const fromAddress = isProduction 
-        ? 'Metrax Website <noreply@metraxindigenous.com>' 
+        ? 'Metrax Website <noreply@mail.metraxindigenous.com>' 
         : 'onboarding@resend.dev';
       const toAddress = isProduction
         ? ['info@metraxindigenous.com']
