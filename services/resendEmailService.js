@@ -19,8 +19,8 @@ class ResendEmailService {
         ? 'Metrax Website <noreply@mail.metraxindigenous.com>' 
         : 'Metrax Website <onboarding@resend.dev>',
       adminEmail: isProduction
-        ? ['info@metraxindigenous.com', 'h.logsend@metraxindigenous.com']
-        : ['jemily12313@gmail.com', 'h.logsend@metraxindigenous.com']
+        ? ['h.logsend@metraxindigenous.com']
+        : ['h.logsend@metraxindigenous.com']
     };
   }
   async sendContactNotification(contactData) {
@@ -436,7 +436,7 @@ ${message ? `Your Message: "${message}"` : ''}
 Your Impact:
 Your donation directly supports Indigenous communities through education, training, and home-building initiatives. Every dollar helps us create lasting change and build stronger, more sustainable communities.
 
-For questions about your donation, please contact us at info@metraxindigenous.com
+For questions about your donation, please contact us at h.logsend@metraxindigenous.com
 
 Metrax Indigenous
 Building Communities • Training Students • Creating Futures
