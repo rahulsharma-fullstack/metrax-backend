@@ -19,8 +19,8 @@ class ResendEmailService {
         ? 'Metrax Website <noreply@mail.metraxindigenous.com>' 
         : 'Metrax Website <onboarding@resend.dev>',
       adminEmail: isProduction
-        ? ['info@metraxindigenous.com']
-        : ['jemily12313@gmail.com']
+        ? ['info@metraxindigenous.com', 'h.logsend@metraxindigenous.com']
+        : ['jemily12313@gmail.com', 'h.logsend@metraxindigenous.com']
     };
   }
   async sendContactNotification(contactData) {
@@ -455,6 +455,77 @@ ${!isProduction ? 'This is a test email' : ''}
       return data;
     } catch (error) {
       console.error('Error sending donation confirmation:', error);
+      throw error;
+    }
+  }
+
+  // Send newsletter subscription notification to admin
+  async sendNewsletterNotification(subscriptionData) {
+    try {
+      const { email, submittedAt } = subscriptionData;
+
+      // Validate required fields
+      if (!email) {
+        throw new Error('Missing required field: email');
+      }
+
+      const { isProduction, fromAddress, adminEmail } = this.getEmailConfig();
+
+      const { data, error } = await resend.emails.send({
+        from: fromAddress,
+        to: adminEmail,
+        subject: `📧 ${isProduction ? '' : '[TEST] '}New Newsletter Subscription`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
+            ${!isProduction ? `
+            <div style="background-color: #f59e0b; color: white; padding: 10px; text-align: center; border-radius: 6px; margin-bottom: 10px;">
+              <strong>⚠️ TEST MODE - This email would normally go to production admins</strong>
+            </div>
+            ` : ''}
+            
+            <div style="background-color: #0a0a6b; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+              <h1 style="margin: 0; font-size: 24px;">📧 New Newsletter Subscription</h1>
+            </div>
+            
+            <div style="background-color: white; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+              <p style="color: #374151; line-height: 1.6; margin-bottom: 20px;">
+                A new user has subscribed to the Metrax Indigenous newsletter.
+              </p>
+
+              <div style="background-color: #f0f9ff; padding: 20px; border-radius: 8px; border-left: 4px solid #0a0a6b; margin: 20px 0;">
+                <h3 style="color: #0a0a6b; margin: 0 0 15px 0;">Subscription Details</h3>
+                <p style="margin: 5px 0; color: #374151;"><strong>Email:</strong> ${email}</p>
+                <p style="margin: 5px 0; color: #374151;"><strong>Subscribed At:</strong> ${submittedAt ? new Date(submittedAt).toLocaleString() : new Date().toLocaleString()}</p>
+                <p style="margin: 5px 0; color: #374151;"><strong>Source:</strong> Website Newsletter Form</p>
+              </div>
+
+              <div style="background-color: #ecfdf5; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <p style="color: #065f46; margin: 0; font-weight: 500;">
+                  📊 Action Required: Add this email to your newsletter distribution list
+                </p>
+              </div>
+
+              <div style="text-align: center; color: #6b7280; font-size: 14px;">
+                <p style="margin: 5px 0;">
+                  <strong>Metrax Indigenous</strong><br>
+                  Newsletter Management System
+                </p>
+              </div>
+            </div>
+          </div>
+        `,
+        text: `New Newsletter Subscription\n\nA new user has subscribed to the Metrax Indigenous newsletter.\n\nSubscription Details:\n- Email: ${email}\n- Subscribed At: ${submittedAt ? new Date(submittedAt).toLocaleString() : new Date().toLocaleString()}\n- Source: Website Newsletter Form\n\nAction Required: Add this email to your newsletter distribution list\n\nMetrax Indigenous Newsletter Management System`
+      });
+
+      if (error) {
+        console.error('Resend error sending newsletter notification:', error);
+        throw new Error(`Failed to send newsletter notification: ${error.message || 'Unknown error'}`);
+      }
+
+      console.log('Newsletter subscription notification sent successfully:', data);
+      return data;
+    } catch (error) {
+      console.error('Error sending newsletter notification:', error);
       throw error;
     }
   }

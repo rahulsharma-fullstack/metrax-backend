@@ -2,6 +2,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const router = express.Router();
+const resendEmailService = require('../services/resendEmailService');
 
 const SUBSCRIBERS_FILE = path.join(__dirname, '../newsletter-subscribers.json');
 
@@ -22,18 +23,38 @@ function writeSubscribers(subscribers) {
 }
 
 // POST /api/newsletter/subscribe
-router.post('/subscribe', (req, res) => {
+router.post('/subscribe', async (req, res) => {
   const { email } = req.body;
   if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
     return res.status(400).json({ success: false, error: 'Invalid email address.' });
   }
-  let subscribers = readSubscribers();
-  if (subscribers.includes(email)) {
-    return res.status(409).json({ success: false, error: 'Email already subscribed.' });
+  
+  try {
+    let subscribers = readSubscribers();
+    if (subscribers.includes(email)) {
+      return res.status(409).json({ success: false, error: 'Email already subscribed.' });
+    }
+    
+    subscribers.push(email);
+    writeSubscribers(subscribers);
+
+    // Send admin notification email (non-blocking)
+    try {
+      await resendEmailService.sendNewsletterNotification({
+        email,
+        submittedAt: new Date().toISOString()
+      });
+      console.log('Newsletter subscription notification sent successfully');
+    } catch (emailError) {
+      console.error('Failed to send newsletter notification email:', emailError);
+      // Don't fail the subscription if email fails - just log it
+    }
+
+    res.json({ success: true, message: 'Subscribed successfully!' });
+  } catch (error) {
+    console.error('Newsletter subscription error:', error);
+    res.status(500).json({ success: false, error: 'Failed to process subscription. Please try again.' });
   }
-  subscribers.push(email);
-  writeSubscribers(subscribers);
-  res.json({ success: true, message: 'Subscribed successfully!' });
 });
 
 // GET /api/newsletter/subscribers
