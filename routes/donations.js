@@ -4,8 +4,6 @@ const router = express.Router();
 
 // Services
 const stripeService = require('../services/stripeService');
-const emailService = require('../services/emailService');
-const receiptService = require('../services/receiptService');
 const resendEmailService = require('../services/resendEmailService');
 
 // Middleware
@@ -160,40 +158,14 @@ router.post('/confirm-payment',
         // Get payment intent details
         const paymentIntent = await stripeService.getPaymentIntent(paymentIntentId);
         
-        // Generate receipt
-        const receiptPath = await receiptService.generateReceipt({
-          paymentIntentId,
-          amount: paymentIntent.amount / 100, // Convert from cents
-          donorName: paymentIntent.metadata.donorName,
-          donorEmail: paymentIntent.metadata.donorEmail,
-          anonymous: paymentIntent.metadata.anonymous === 'true',
-          message: paymentIntent.metadata.message,
-          projectTitle: paymentIntent.description?.replace('Donation to ', '') || 'Community Project',
-          paymentMethod: 'stripe',
-        });
+        // TODO: Generate receipt (currently disabled - using Resend only)
+        // const receiptPath = await receiptService.generateReceipt({...});
 
-        // Send confirmation email
-        await emailService.sendDonationConfirmation({
-          paymentIntentId,
-          amount: paymentIntent.amount / 100,
-          donorName: paymentIntent.metadata.donorName,
-          donorEmail: paymentIntent.metadata.donorEmail,
-          anonymous: paymentIntent.metadata.anonymous === 'true',
-          message: paymentIntent.metadata.message,
-          projectTitle: paymentIntent.description?.replace('Donation to ', '') || 'Community Project',
-          receiptPath,
-        });
+        // TODO: Send confirmation email (currently using separate endpoints)
+        // await emailService.sendDonationConfirmation({...});
 
-        // Send admin notification
-        await emailService.sendAdminNotification({
-          paymentIntentId,
-          amount: paymentIntent.amount / 100,
-          donorName: paymentIntent.metadata.donorName,
-          donorEmail: paymentIntent.metadata.donorEmail,
-          anonymous: paymentIntent.metadata.anonymous === 'true',
-          message: paymentIntent.metadata.message,
-          projectTitle: paymentIntent.description?.replace('Donation to ', '') || 'Community Project',
-        });
+        // TODO: Send admin notification (currently using separate endpoints)  
+        // await emailService.sendAdminNotification({...});
 
         logger.info('Payment confirmed successfully', {
           paymentIntentId,
@@ -302,29 +274,11 @@ router.post('/refund',
         refundData.reason
       );
 
-      // Generate refund receipt
-      const receiptPath = await receiptService.generateRefundReceipt({
-        refundId: refund.id,
-        originalAmount: paymentIntent.amount / 100,
-        refundAmount: refund.amount / 100,
-        reason: refundData.reason,
-        projectTitle: paymentIntent.description?.replace('Donation to ', '') || 'Community Project',
-        originalPaymentIntentId: paymentIntent.id,
-        originalDate: new Date(paymentIntent.created * 1000),
-        donorName: paymentIntent.metadata.donorName,
-        donorEmail: paymentIntent.metadata.donorEmail,
-      });
+      // TODO: Generate refund receipt (currently disabled)
+      // const receiptPath = await receiptService.generateRefundReceipt({...});
 
-      // Send refund notification
-      await emailService.sendRefundNotification({
-        donorName: paymentIntent.metadata.donorName,
-        donorEmail: paymentIntent.metadata.donorEmail,
-        originalAmount: paymentIntent.amount / 100,
-        refundAmount: refund.amount / 100,
-        projectTitle: paymentIntent.description?.replace('Donation to ', '') || 'Community Project',
-        refundId: refund.id,
-        reason: refundData.reason,
-      });
+      // TODO: Send refund notification (currently using Resend)
+      // await emailService.sendRefundNotification({...});
 
       logger.info('Refund created successfully', {
         refundId: refund.id,
@@ -361,17 +315,24 @@ router.get('/receipt/:paymentIntentId',
         });
       }
 
-      const receiptPath = receiptService.getReceiptPath(paymentIntentId);
-      const exists = await receiptService.receiptExists(paymentIntentId);
+      // TODO: Receipt generation is currently disabled
+      // Using Resend email receipts instead of PDF receipts
+      return res.status(501).json({
+        error: 'PDF receipt generation is currently disabled. Receipts are sent via email.',
+        message: 'Check your email for the donation confirmation receipt.'
+      });
 
-      if (!exists) {
-        return res.status(404).json({
-          error: 'Receipt not found',
-        });
-      }
+      // const receiptPath = receiptService.getReceiptPath(paymentIntentId);
+      // const exists = await receiptService.receiptExists(paymentIntentId);
+
+      // if (!exists) {
+      //   return res.status(404).json({
+      //     error: 'Receipt not found',
+      //   });
+      // }
 
       // Send file
-      res.download(receiptPath, `receipt-${paymentIntentId}.pdf`);
+      // res.download(receiptPath, `receipt-${paymentIntentId}.pdf`);
     } catch (error) {
       logger.error('Error retrieving receipt', {
         error: error.message,
@@ -385,8 +346,8 @@ router.get('/receipt/:paymentIntentId',
   }
 );
 
-// Test email endpoint
-router.post('/test-email',
+// Test email endpoint (old emailService - disabled)
+router.post('/test-email-old',
   [
     body('email')
       .isEmail()
@@ -394,22 +355,27 @@ router.post('/test-email',
   ],
   async (req, res) => {
     try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          error: 'Validation failed',
-          details: errors.array(),
-        });
-      }
-
-      const { email } = req.body;
-
-      await emailService.testEmail(email);
-
-      res.json({
-        success: true,
-        message: 'Test email sent successfully',
+      return res.status(501).json({
+        error: 'Old email service is disabled',
+        message: 'Use /test-resend endpoint instead'
       });
+
+      // const errors = validationResult(req);
+      // if (!errors.isEmpty()) {
+      //   return res.status(400).json({
+      //     error: 'Validation failed',
+      //     details: errors.array(),
+      //   });
+      // }
+
+      // const { email } = req.body;
+
+      // await emailService.testEmail(email);
+
+      // res.json({
+      //   success: true,
+      //   message: 'Test email sent successfully',
+      // });
     } catch (error) {
       logger.error('Error sending test email', {
         error: error.message,

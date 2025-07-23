@@ -38,7 +38,8 @@ const createSpeedLimiter = (windowMs, delayAfter, delayMs) => {
   return speedLimit({
     windowMs,
     delayAfter,
-    delayMs,
+    delayMs: () => delayMs, // Fixed: Convert to function for new express-slow-down version
+    validate: { delayMs: false }, // Disable warning
     handler: (req, res) => {
       logger.info(`Speed limit applied for IP: ${req.ip}`, {
         ip: req.ip,

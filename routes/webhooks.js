@@ -3,7 +3,7 @@ const router = express.Router();
 
 // Services
 const stripeService = require('../services/stripeService');
-const emailService = require('../services/emailService');
+const resendEmailService = require('../services/resendEmailService');
 
 // Middleware
 const { sanitizeInput } = require('../middleware/security');
