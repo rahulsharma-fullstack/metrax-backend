@@ -456,6 +456,88 @@ router.post('/send-notification', async (req, res) => {
   }
 });
 
+// POST /donations/send-confirmation - Send confirmation email to donor
+router.post('/send-confirmation', async (req, res) => {
+  try {
+    const { donorName, donorEmail, amount, projectTitle, message, submittedAt, paymentId } = req.body;
+    if (!donorEmail || !amount || !projectTitle) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: donorEmail, amount, projectTitle'
+      });
+    }
+    
+    const donationData = {
+      donorName: donorName || 'Anonymous',
+      donorEmail,
+      amount,
+      projectTitle,
+      message: message || '',
+      submittedAt: submittedAt || new Date().toISOString(),
+      paymentId
+    };
+    
+    const result = await resendEmailService.sendDonationConfirmation(donationData);
+    res.status(200).json({
+      success: true,
+      message: 'Donation confirmation email sent successfully',
+      data: result
+    });
+  } catch (error) {
+    console.error('Error sending donation confirmation:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to send donation confirmation',
+      details: error.message
+    });
+  }
+});
+
+// Test email endpoint
+router.post('/test-email', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    const testData = {
+      donorName: 'Test User',
+      donorEmail: email,
+      amount: '25.00',
+      projectTitle: 'Test Project',
+      message: 'This is a test donation',
+      submittedAt: new Date().toISOString(),
+      paymentId: 'test_payment_123'
+    };
+
+    const result = await resendEmailService.sendDonationConfirmation(testData);
+    res.json({
+      success: true,
+      message: 'Test email sent successfully',
+      data: result
+    });
+  } catch (error) {
+    console.error('Test email error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to send test email',
+      details: error.message
+    });
+  }
+});
+
+// POST /donations/test-resend - Test resend email
+router.post('/test-resend', async (req, res) => {
+  try {
+    const { email } = req.body;
+    const result = await resendEmailService.testEmail(email);
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Health check endpoint
 router.get('/health',
   (req, res) => {
