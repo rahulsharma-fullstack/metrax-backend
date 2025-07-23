@@ -19,8 +19,8 @@ class ResendEmailService {
         ? 'Metrax Website <noreply@mail.metraxindigenous.com>' 
         : 'Metrax Website <onboarding@resend.dev>',
       adminEmail: isProduction
-        ? ['h.logsend@metraxindigenous.com']
-        : ['h.logsend@metraxindigenous.com']
+        ? ['r.sharma@metraxindigenous.com']
+        : ['r.sharma@metraxindigenous.com']
     };
   }
   async sendContactNotification(contactData) {
