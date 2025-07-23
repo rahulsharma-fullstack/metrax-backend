@@ -14,16 +14,15 @@ const config = {
     paymentMethods: ['card'],
   },
 
-  // Email Configuration
-  email: {
-    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.EMAIL_PORT) || 587,
-    secure: false,
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-    from: process.env.EMAIL_FROM || 'donations@metrax.org',
+  // Resend Email Configuration
+  resend: {
+    apiKey: process.env.RESEND_API_KEY,
+    fromDomain: process.env.NODE_ENV === 'production' 
+      ? 'mail.metraxindigenous.com' 
+      : 'resend.dev',
+    adminEmail: process.env.NODE_ENV === 'production'
+      ? 'info@metraxindigenous.com'
+      : 'jemily12313@gmail.com',
   },
 
   // JWT Configuration
@@ -81,8 +80,7 @@ const config = {
 // Validate required environment variables
 const requiredEnvVars = [
   'STRIPE_SECRET_KEY',
-  'EMAIL_USER',
-  'EMAIL_PASS',
+  'RESEND_API_KEY',
   'JWT_SECRET',
 ];
 
