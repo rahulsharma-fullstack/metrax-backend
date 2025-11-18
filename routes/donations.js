@@ -1,5 +1,6 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
+const validator = require('validator');
 const router = express.Router();
 
 // Services
@@ -19,11 +20,73 @@ const { validateDonationData, validateRefundData } = require('../utils/validatio
 // Logger
 const logger = require('../utils/logger');
 
+const FRIENDLY_PROJECT_ID_REGEX = /^[a-z0-9-]{3,64}$/i;
+
+const normalizeDonationPayload = (req, res, next) => {
+  if (!req.body || typeof req.body !== 'object') {
+    return next();
+  }
+
+  const body = req.body;
+
+  if (!body.projectId) {
+    body.projectId = body.project_id || body.projectSlug || body.project_slug || null;
+  }
+
+  if (typeof body.projectId === 'string') {
+    body.projectId = body.projectId.trim();
+  }
+
+  if (!body.donorName) {
+    if (body.donor_name) {
+      body.donorName = body.donor_name;
+    } else if (body.firstName || body.lastName) {
+      const composedName = [body.firstName, body.lastName].filter(Boolean).join(' ').trim();
+      if (composedName) {
+        body.donorName = composedName;
+      }
+    }
+  }
+
+  if (typeof body.donorName === 'string') {
+    body.donorName = body.donorName.trim();
+  }
+
+  if (!body.donorEmail) {
+    body.donorEmail = body.donor_email || body.email || null;
+  }
+
+  if (typeof body.donorEmail === 'string') {
+    body.donorEmail = body.donorEmail.trim();
+  }
+
+  if (typeof body.anonymous === 'string') {
+    const normalizedAnonymous = body.anonymous.toLowerCase();
+    if (normalizedAnonymous === 'true' || normalizedAnonymous === 'false') {
+      body.anonymous = normalizedAnonymous === 'true';
+    }
+  }
+
+  if (typeof body.amount === 'string') {
+    const cleanedAmount = parseFloat(body.amount.replace(/[^0-9.]/g, ''));
+    if (!Number.isNaN(cleanedAmount)) {
+      body.amount = cleanedAmount;
+    }
+  }
+
+  if (!body.message && (body.note || body.comment)) {
+    body.message = body.note || body.comment;
+  }
+
+  next();
+};
+
 // Create payment intent
 router.post('/create-payment-intent', 
+  normalizeDonationPayload,
   // Add debugging middleware to see what's actually being received
   (req, res, next) => {
-    console.log('Raw request body:', req.body);
+    console.log('Normalized request body:', req.body);
     console.log('Request headers:', req.headers);
     console.log('Content-Type:', req.headers['content-type']);
     next();
@@ -38,15 +101,26 @@ router.post('/create-payment-intent',
       .withMessage('Amount must be between $1.00 and $10,000.00'),
     body('projectId')
       .custom((value) => {
-        logger.info('Validating projectId:', { value, type: typeof value });
-        if (value === 'general') {
+        if (!value || typeof value !== 'string') {
+          logger.warn('Project ID missing or not a string', { value });
+          return false;
+        }
+
+        const trimmedValue = value.trim();
+        if (trimmedValue.toLowerCase() === 'general') {
           return true;
         }
-        const isValid = require('validator').isUUID(value);
-        if (!isValid) {
-          logger.warn('Invalid projectId format:', { value });
+
+        if (validator.isUUID(trimmedValue)) {
+          return true;
         }
-        return isValid;
+
+        if (FRIENDLY_PROJECT_ID_REGEX.test(trimmedValue)) {
+          return true;
+        }
+
+        logger.warn('Invalid projectId format', { value });
+        return false;
       })
       .withMessage('Invalid project ID'),
     body('donorName')

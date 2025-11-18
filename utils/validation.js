@@ -1,6 +1,8 @@
 const validator = require('validator');
 const config = require('../config/config');
 
+const FRIENDLY_PROJECT_ID_REGEX = /^[a-z0-9-]{3,64}$/i;
+
 // Validate email format
 const validateEmail = (email) => {
   if (!email || typeof email !== 'string') {
@@ -51,14 +53,21 @@ const validateProjectId = (projectId) => {
   if (!projectId || typeof projectId !== 'string') {
     return false;
   }
-  
-  // Allow "general" as a special project ID for general donations
-  if (projectId === 'general') {
+
+  const normalizedProjectId = projectId.trim();
+
+  // Allow "general" as a special project ID for general donations (case insensitive)
+  if (normalizedProjectId.toLowerCase() === 'general') {
     return true;
   }
-  
+
   // UUID format validation
-  return validator.isUUID(projectId);
+  if (validator.isUUID(normalizedProjectId)) {
+    return true;
+  }
+
+  // Allow friendly slugs/IDs for legacy marketing pages
+  return FRIENDLY_PROJECT_ID_REGEX.test(normalizedProjectId);
 };
 
 // Validate payment method
