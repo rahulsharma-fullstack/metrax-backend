@@ -166,8 +166,16 @@ class StripeService {
       errors.push('Project ID is required');
     }
 
-    if (!donationData.donorName && !donationData.anonymous) {
-      errors.push('Donor name is required for non-anonymous donations');
+    // Anonymous donations should have donorName set to 'Anonymous'
+    if (donationData.anonymous) {
+      if (!donationData.donorName) {
+        donationData.donorName = 'Anonymous';
+      }
+    } else {
+      // Non-anonymous donations require a donor name
+      if (!donationData.donorName || donationData.donorName.trim() === '') {
+        errors.push('Donor name is required for non-anonymous donations');
+      }
     }
 
     if (!donationData.donorEmail) {

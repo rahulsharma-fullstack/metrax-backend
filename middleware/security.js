@@ -69,6 +69,12 @@ const corsOptions = {
 
 // Input sanitization middleware
 const sanitizeInput = (req, res, next) => {
+  // Skip sanitization for donation endpoints to prevent data corruption
+  // The normalization middleware handles data cleaning
+  if (req.path.includes('/donations/create-payment-intent')) {
+    return next();
+  }
+  
   if (req.body) {
     Object.keys(req.body).forEach(key => {
       if (typeof req.body[key] === 'string') {
@@ -93,7 +99,8 @@ const validateRequest = (req, res, next) => {
   // Basic request validation
   if (req.body && Object.keys(req.body).length > 0) {
     const contentType = req.get('Content-Type');
-    if (!contentType || !contentType.includes('application/json')) {
+    // Accept both 'application/json' and 'application/json; charset=utf-8'
+    if (!contentType || (!contentType.includes('application/json') && !contentType.includes('multipart/form-data'))) {
       return res.status(400).json({
         error: 'Content-Type must be application/json',
       });

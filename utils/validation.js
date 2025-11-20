@@ -115,9 +115,16 @@ const validateDonationData = (donationData) => {
 
   // Conditional validation
   if (!donationData.anonymous) {
-    if (!donationData.donorName) {
+    if (!donationData.donorName || donationData.donorName.trim() === '') {
       errors.push('Donor name is required for non-anonymous donations');
     } else if (!validateName(donationData.donorName)) {
+      errors.push('Invalid donor name format');
+    }
+  } else {
+    // For anonymous donations, donorName can be empty or 'Anonymous'
+    if (donationData.donorName && 
+        donationData.donorName !== 'Anonymous' && 
+        !validateName(donationData.donorName)) {
       errors.push('Invalid donor name format');
     }
   }

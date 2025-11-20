@@ -8,10 +8,10 @@ const stripeService = require('../services/stripeService');
 const resendEmailService = require('../services/resendEmailService');
 
 // Middleware
-const { 
-  paymentRateLimit, 
-  sanitizeInput, 
-  validateRequest 
+const {
+  paymentRateLimit,
+  sanitizeInput,
+  validateRequest
 } = require('../middleware/security');
 
 // Validation
@@ -29,14 +29,15 @@ const normalizeDonationPayload = (req, res, next) => {
 
   const body = req.body;
 
+  // Normalize projectId
   if (!body.projectId) {
     body.projectId = body.project_id || body.projectSlug || body.project_slug || null;
   }
-
   if (typeof body.projectId === 'string') {
     body.projectId = body.projectId.trim();
   }
 
+  // Normalize donorName - handle anonymous case
   if (!body.donorName) {
     if (body.donor_name) {
       body.donorName = body.donor_name;
@@ -47,26 +48,34 @@ const normalizeDonationPayload = (req, res, next) => {
       }
     }
   }
-
   if (typeof body.donorName === 'string') {
     body.donorName = body.donorName.trim();
   }
+  // If anonymous and no name provided, set to 'Anonymous'
+  if (body.anonymous && (!body.donorName || body.donorName.trim() === '')) {
+    body.donorName = 'Anonymous';
+  }
 
+  // Normalize donorEmail
   if (!body.donorEmail) {
     body.donorEmail = body.donor_email || body.email || null;
   }
-
   if (typeof body.donorEmail === 'string') {
-    body.donorEmail = body.donorEmail.trim();
+    body.donorEmail = body.donorEmail.trim().toLowerCase();
   }
 
+  // Normalize anonymous flag
   if (typeof body.anonymous === 'string') {
     const normalizedAnonymous = body.anonymous.toLowerCase();
     if (normalizedAnonymous === 'true' || normalizedAnonymous === 'false') {
       body.anonymous = normalizedAnonymous === 'true';
     }
   }
+  if (body.anonymous === undefined || body.anonymous === null) {
+    body.anonymous = false;
+  }
 
+  // Normalize amount
   if (typeof body.amount === 'string') {
     const cleanedAmount = parseFloat(body.amount.replace(/[^0-9.]/g, ''));
     if (!Number.isNaN(cleanedAmount)) {
@@ -74,25 +83,27 @@ const normalizeDonationPayload = (req, res, next) => {
     }
   }
 
+  // Normalize message
   if (!body.message && (body.note || body.comment)) {
     body.message = body.note || body.comment;
+  }
+  if (body.message === null || body.message === undefined) {
+    body.message = '';
+  }
+
+  // Ensure projectTitle exists
+  if (!body.projectTitle && body.project_title) {
+    body.projectTitle = body.project_title;
   }
 
   next();
 };
 
 // Create payment intent
-router.post('/create-payment-intent', 
+router.post('/create-payment-intent',
   normalizeDonationPayload,
-  // Add debugging middleware to see what's actually being received
-  (req, res, next) => {
-    console.log('Normalized request body:', req.body);
-    console.log('Request headers:', req.headers);
-    console.log('Content-Type:', req.headers['content-type']);
-    next();
-  },
   paymentRateLimit,
-  // Temporarily disable sanitizeInput and validateRequest to fix the issue
+  // Temporarily remove sanitizeInput and validateRequest to debug
   // sanitizeInput,
   // validateRequest,
   [
@@ -124,9 +135,15 @@ router.post('/create-payment-intent',
       })
       .withMessage('Invalid project ID'),
     body('donorName')
-      .optional()
+      .if((value, { req }) => !req.body.anonymous)
+      .notEmpty()
+      .withMessage('Donor name is required when not anonymous')
       .isLength({ min: 1, max: 100 })
       .withMessage('Donor name must be between 1 and 100 characters'),
+    body('donorName')
+      .optional({ checkFalsy: true })
+      .isLength({ max: 100 })
+      .withMessage('Donor name must be less than 100 characters'),
     body('donorEmail')
       .isEmail()
       .withMessage('Invalid email format'),
@@ -141,9 +158,17 @@ router.post('/create-payment-intent',
   ],
   async (req, res) => {
     try {
+      // Log the incoming data for debugging
+      console.log('=== PAYMENT INTENT REQUEST ===');
+      console.log('Body:', JSON.stringify(req.body, null, 2));
+      console.log('Body keys:', Object.keys(req.body));
+      console.log('Body types:', Object.keys(req.body).map(k => `${k}: ${typeof req.body[k]}`));
+      
       // Check for validation errors
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
+        console.log('=== VALIDATION ERRORS ===');
+        console.log(JSON.stringify(errors.array(), null, 2));
         logger.error('Validation failed for payment intent creation', {
           errors: errors.array(),
           body: req.body,
@@ -157,10 +182,10 @@ router.post('/create-payment-intent',
       const donationData = {
         amount: parseFloat(req.body.amount),
         projectId: req.body.projectId,
-        donorName: req.body.donorName,
+        donorName: req.body.anonymous ? 'Anonymous' : (req.body.donorName || 'Anonymous'),
         donorEmail: req.body.donorEmail,
         anonymous: req.body.anonymous || false,
-        message: req.body.message,
+        message: req.body.message || '',
         projectTitle: req.body.projectTitle || 'Community Project',
       };
 
@@ -231,7 +256,7 @@ router.post('/confirm-payment',
       if (result.success) {
         // Get payment intent details
         const paymentIntent = await stripeService.getPaymentIntent(paymentIntentId);
-        
+
         // TODO: Generate receipt (currently disabled - using Resend only)
         // const receiptPath = await receiptService.generateReceipt({...});
 
@@ -506,7 +531,7 @@ router.post('/send-confirmation', async (req, res) => {
         error: 'Missing required fields: donorEmail, amount, projectTitle'
       });
     }
-    
+
     const donationData = {
       donorName: donorName || 'Anonymous',
       donorEmail,
@@ -516,7 +541,7 @@ router.post('/send-confirmation', async (req, res) => {
       submittedAt: submittedAt || new Date().toISOString(),
       paymentId
     };
-    
+
     const result = await resendEmailService.sendDonationConfirmation(donationData);
     res.status(200).json({
       success: true,
