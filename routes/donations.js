@@ -158,17 +158,9 @@ router.post('/create-payment-intent',
   ],
   async (req, res) => {
     try {
-      // Log the incoming data for debugging
-      console.log('=== PAYMENT INTENT REQUEST ===');
-      console.log('Body:', JSON.stringify(req.body, null, 2));
-      console.log('Body keys:', Object.keys(req.body));
-      console.log('Body types:', Object.keys(req.body).map(k => `${k}: ${typeof req.body[k]}`));
-      
       // Check for validation errors
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        console.log('=== VALIDATION ERRORS ===');
-        console.log(JSON.stringify(errors.array(), null, 2));
         logger.error('Validation failed for payment intent creation', {
           errors: errors.array(),
           body: req.body,
@@ -228,58 +220,119 @@ router.post('/create-payment-intent',
 // Confirm payment
 router.post('/confirm-payment',
   paymentRateLimit,
-  sanitizeInput,
-  validateRequest,
   [
     body('paymentIntentId')
+      .notEmpty()
+      .withMessage('Payment intent ID is required')
       .isString()
-      .withMessage('Payment intent ID is required'),
-    body('paymentMethodId')
+      .withMessage('Payment intent ID must be a string'),
+    body('projectId')
+      .notEmpty()
+      .withMessage('Project ID is required')
       .isString()
-      .withMessage('Payment method ID is required'),
+      .withMessage('Project ID must be a string'),
+    body('amount')
+      .isNumeric()
+      .withMessage('Amount must be a number')
+      .isFloat({ min: 1.0, max: 10000.0 })
+      .withMessage('Amount must be between $1.00 and $10,000.00'),
+    body('donorEmail')
+      .isEmail()
+      .normalizeEmail()
+      .withMessage('Invalid email format'),
+    body('donorName')
+      .optional({ checkFalsy: true })
+      .isString()
+      .isLength({ max: 100 })
+      .withMessage('Donor name must be less than 100 characters'),
+    body('anonymous')
+      .optional()
+      .isBoolean()
+      .withMessage('Anonymous must be a boolean'),
+    body('message')
+      .optional({ checkFalsy: true })
+      .isString()
+      .isLength({ max: 500 })
+      .withMessage('Message must be less than 500 characters'),
   ],
   async (req, res) => {
     try {
+      console.log('=== CONFIRM PAYMENT REQUEST ===');
+      console.log('Body:', JSON.stringify(req.body, null, 2));
+      console.log('Body keys:', Object.keys(req.body));
+      
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
+        console.log('=== VALIDATION ERRORS ===');
+        console.log(JSON.stringify(errors.array(), null, 2));
+        logger.error('Validation failed for payment confirmation', {
+          errors: errors.array(),
+          body: req.body,
+        });
         return res.status(400).json({
           error: 'Validation failed',
           details: errors.array(),
         });
       }
 
-      const { paymentIntentId, paymentMethodId } = req.body;
+      const {
+        paymentIntentId,
+        projectId,
+        amount,
+        donorName,
+        donorEmail,
+        anonymous = false,
+        message = '',
+        projectTitle,
+      } = req.body;
 
-      // Confirm payment
-      const result = await stripeService.confirmPayment(paymentIntentId, paymentMethodId);
+      // Get payment intent details from Stripe
+      const paymentIntent = await stripeService.getPaymentIntent(paymentIntentId);
 
-      if (result.success) {
-        // Get payment intent details
-        const paymentIntent = await stripeService.getPaymentIntent(paymentIntentId);
-
-        // TODO: Generate receipt (currently disabled - using Resend only)
-        // const receiptPath = await receiptService.generateReceipt({...});
-
-        // TODO: Send confirmation email (currently using separate endpoints)
-        // await emailService.sendDonationConfirmation({...});
-
-        // TODO: Send admin notification (currently using separate endpoints)  
-        // await emailService.sendAdminNotification({...});
-
-        logger.info('Payment confirmed successfully', {
+      if (paymentIntent.status !== 'succeeded') {
+        logger.warn('Payment intent not succeeded', {
           paymentIntentId,
-          amount: paymentIntent.amount,
+          status: paymentIntent.status,
+        });
+        return res.status(400).json({
+          error: 'Payment not completed',
+          status: paymentIntent.status,
         });
       }
 
+      // Verify amount matches (Stripe uses cents)
+      const expectedAmount = Math.round(amount * 100);
+      if (paymentIntent.amount !== expectedAmount) {
+        logger.error('Amount mismatch', {
+          expected: expectedAmount,
+          received: paymentIntent.amount,
+        });
+        return res.status(400).json({
+          error: 'Amount mismatch',
+        });
+      }
+
+      logger.info('Payment confirmed successfully', {
+        paymentIntentId,
+        projectId,
+        amount: parseFloat(amount),
+        donorEmail,
+      });
+
       res.json({
-        success: result.success,
-        status: result.status,
+        success: true,
+        status: paymentIntent.status,
+        paymentIntent: {
+          id: paymentIntent.id,
+          amount: paymentIntent.amount,
+          status: paymentIntent.status,
+        },
       });
     } catch (error) {
+      console.error('Error confirming payment:', error);
       logger.error('Error confirming payment', {
         error: error.message,
-        paymentIntentId: req.body.paymentIntentId,
+        stack: error.stack,
       });
 
       res.status(500).json({
@@ -600,6 +653,97 @@ router.post('/test-resend', async (req, res) => {
     res.json({ success: true, data: result });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /donations/update-project-amount - Update project amount after successful donation
+router.post('/update-project-amount', async (req, res) => {
+  try {
+    const { projectId, amount } = req.body;
+    
+    if (!projectId || !amount) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: projectId, amount'
+      });
+    }
+
+    // Import Supabase with service role key to bypass RLS
+    const { createClient } = require('@supabase/supabase-js');
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('Missing Supabase credentials');
+      return res.status(500).json({
+        success: false,
+        error: 'Server configuration error'
+      });
+    }
+
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // Get current project
+    const { data: project, error: fetchError } = await supabaseAdmin
+      .from('projects')
+      .select('amount_raised, supporters')
+      .eq('id', projectId)
+      .single();
+
+    if (fetchError) {
+      console.error('Error fetching project:', fetchError);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to fetch project'
+      });
+    }
+
+    if (project) {
+      const newAmountRaised = project.amount_raised + parseFloat(amount);
+      const newSupporters = project.supporters + 1;
+
+      const { error: updateError } = await supabaseAdmin
+        .from('projects')
+        .update({ 
+          amount_raised: newAmountRaised,
+          supporters: newSupporters,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', projectId);
+
+      if (updateError) {
+        console.error('Error updating project:', updateError);
+        return res.status(500).json({
+          success: false,
+          error: 'Failed to update project'
+        });
+      }
+
+      console.log(`Project ${projectId} updated: $${amount} added, now $${newAmountRaised} with ${newSupporters} supporters`);
+      
+      res.status(200).json({
+        success: true,
+        message: 'Project amount updated successfully',
+        data: {
+          projectId,
+          amountAdded: amount,
+          newAmountRaised,
+          newSupporters
+        }
+      });
+    } else {
+      res.status(404).json({
+        success: false,
+        error: 'Project not found'
+      });
+    }
+  } catch (error) {
+    console.error('Error updating project amount:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update project amount',
+      details: error.message
+    });
   }
 });
 
