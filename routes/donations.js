@@ -257,14 +257,8 @@ router.post('/confirm-payment',
   ],
   async (req, res) => {
     try {
-      console.log('=== CONFIRM PAYMENT REQUEST ===');
-      console.log('Body:', JSON.stringify(req.body, null, 2));
-      console.log('Body keys:', Object.keys(req.body));
-      
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        console.log('=== VALIDATION ERRORS ===');
-        console.log(JSON.stringify(errors.array(), null, 2));
         logger.error('Validation failed for payment confirmation', {
           errors: errors.array(),
           body: req.body,
@@ -329,7 +323,6 @@ router.post('/confirm-payment',
         },
       });
     } catch (error) {
-      console.error('Error confirming payment:', error);
       logger.error('Error confirming payment', {
         error: error.message,
         stack: error.stack,
@@ -602,7 +595,6 @@ router.post('/send-confirmation', async (req, res) => {
       data: result
     });
   } catch (error) {
-    console.error('Error sending donation confirmation:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to send donation confirmation',
@@ -636,7 +628,6 @@ router.post('/test-email', async (req, res) => {
       data: result
     });
   } catch (error) {
-    console.error('Test email error:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to send test email',
@@ -674,7 +665,6 @@ router.post('/update-project-amount', async (req, res) => {
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     
     if (!supabaseUrl || !supabaseServiceKey) {
-      console.error('Missing Supabase credentials');
       return res.status(500).json({
         success: false,
         error: 'Server configuration error'
@@ -691,7 +681,6 @@ router.post('/update-project-amount', async (req, res) => {
       .single();
 
     if (fetchError) {
-      console.error('Error fetching project:', fetchError);
       return res.status(500).json({
         success: false,
         error: 'Failed to fetch project'
@@ -712,14 +701,11 @@ router.post('/update-project-amount', async (req, res) => {
         .eq('id', projectId);
 
       if (updateError) {
-        console.error('Error updating project:', updateError);
         return res.status(500).json({
           success: false,
           error: 'Failed to update project'
         });
       }
-
-      console.log(`Project ${projectId} updated: $${amount} added, now $${newAmountRaised} with ${newSupporters} supporters`);
       
       res.status(200).json({
         success: true,
@@ -738,7 +724,6 @@ router.post('/update-project-amount', async (req, res) => {
       });
     }
   } catch (error) {
-    console.error('Error updating project amount:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to update project amount',

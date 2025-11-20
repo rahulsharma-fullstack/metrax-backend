@@ -74,7 +74,7 @@ router.post('/contact', contactFormLimiter, validateContactForm, async (req, res
     // Send notification email to admin (non-blocking)
     try {
       await resendEmailService.sendContactNotification(contactData);
-      console.log('Admin notification email sent successfully');
+
     } catch (emailError) {
       console.error('Failed to send admin notification email:', emailError);
       // Don't fail the request if email fails - just log it

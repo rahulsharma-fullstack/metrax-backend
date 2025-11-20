@@ -44,7 +44,7 @@ router.post('/subscribe', async (req, res) => {
         email,
         submittedAt: new Date().toISOString()
       });
-      console.log('Newsletter subscription notification sent successfully');
+
     } catch (emailError) {
       console.error('Failed to send newsletter notification email:', emailError);
       // Don't fail the subscription if email fails - just log it

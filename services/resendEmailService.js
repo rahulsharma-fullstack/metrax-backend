@@ -115,7 +115,6 @@ ${!isProduction ? '\nNote: In production, this would be sent to info@metraxindig
         throw new Error(`Failed to send email: ${error.message || 'Unknown error'}`);
       }
 
-      console.log('Contact notification sent successfully:', data);
       return data;
     } catch (error) {
       console.error('Error sending contact notification:', error);
@@ -186,7 +185,6 @@ ${!isProduction ? '\nNote: In production, this would be sent to info@metraxindig
         throw new Error(`Failed to send donation notification: ${error.message || 'Unknown error'}`);
       }
 
-      console.log('Donation notification sent successfully:', data);
       return data;
     } catch (error) {
       console.error('Error sending donation notification:', error);
@@ -239,7 +237,6 @@ ${!isProduction ? '\nNote: In production, this would be sent to info@metraxindig
         throw new Error(`Failed to send expression notification: ${error.message || 'Unknown error'}`);
       }
 
-      console.log('Expression notification sent successfully:', data);
       return data;
     } catch (error) {
       console.error('Error sending expression notification:', error);
@@ -286,7 +283,6 @@ ${!isProduction ? '\nNote: In production, this would be sent to info@metraxindig
         throw new Error(`Failed to send volunteer notification: ${error.message || 'Unknown error'}`);
       }
 
-      console.log('Volunteer notification sent successfully:', data);
       return data;
     } catch (error) {
       console.error('Error sending volunteer notification:', error);
@@ -329,7 +325,6 @@ ${!isProduction ? '\nNote: In production, this would be sent to info@metraxindig
         throw new Error(`Failed to send enrollment notification: ${error.message || 'Unknown error'}`);
       }
 
-      console.log('Enrollment notification sent successfully:', data);
       return data;
     } catch (error) {
       console.error('Error sending enrollment notification:', error);
@@ -451,7 +446,6 @@ ${!isProduction ? 'This is a test email' : ''}
         throw new Error(`Failed to send confirmation email: ${error.message || 'Unknown error'}`);
       }
 
-      console.log('Donation confirmation sent successfully:', data);
       return data;
     } catch (error) {
       console.error('Error sending donation confirmation:', error);
@@ -522,7 +516,6 @@ ${!isProduction ? 'This is a test email' : ''}
         throw new Error(`Failed to send newsletter notification: ${error.message || 'Unknown error'}`);
       }
 
-      console.log('Newsletter subscription notification sent successfully:', data);
       return data;
     } catch (error) {
       console.error('Error sending newsletter notification:', error);
@@ -579,7 +572,6 @@ ${!isProduction ? 'This is a test email' : ''}
         throw new Error(`Test email failed: ${error.message || 'Unknown error'}`);
       }
 
-      console.log('Test email sent successfully:', data);
       return data;
     } catch (error) {
       console.error('Error sending test email:', error);
